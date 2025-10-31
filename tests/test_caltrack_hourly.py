@@ -1,41 +1,35 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""
 
-   Copyright 2014-2024 OpenEEmeter contributors
-
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
-
-       http://www.apache.org/licenses/LICENSE-2.0
-
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
-
-"""
+#  Copyright 2014-2025 OpenDSM contributors
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#      http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
 import json
 import numpy as np
 import pandas as pd
 import pytest
 
-from eemeter.eemeter.models.hourly.model import (
+from opendsm.eemeter.models.hourly_caltrack.model import (
     caltrack_hourly_fit_feature_processor,
     caltrack_hourly_prediction_feature_processor,
     fit_caltrack_hourly_model_segment,
     fit_caltrack_hourly_model,
 )
-from eemeter.eemeter.common.features import (
+from opendsm.eemeter.common.features import (
     compute_time_features,
 )
 
 
 @pytest.fixture
 def segmented_data():
-    index = pd.date_range(start="2017-01-01", periods=24, freq="H", tz="UTC")
+    index = pd.date_range(start="2017-01-01", periods=24, freq="h", tz="UTC")
     time_features = compute_time_features(index)
     segmented_data = pd.DataFrame(
         {
@@ -166,7 +160,7 @@ def test_fit_caltrack_hourly_model_segment(segmented_design_matrices):
 
 @pytest.fixture
 def temps():
-    index = pd.date_range(start="2017-01-01", periods=24, freq="H", tz="UTC")
+    index = pd.date_range(start="2017-01-01", periods=24, freq="h", tz="UTC")
     temps = pd.Series(np.linspace(0, 100, 24), index=index)
     return temps
 
@@ -215,7 +209,7 @@ def test_serialize_caltrack_hourly_model(
 @pytest.fixture
 def segmented_data_nans():
     num_periods = 200
-    index = pd.date_range(start="2017-01-01", periods=num_periods, freq="H", tz="UTC")
+    index = pd.date_range(start="2017-01-01", periods=num_periods, freq="h", tz="UTC")
     time_features = compute_time_features(index)
     segmented_data = pd.DataFrame(
         {
@@ -307,7 +301,7 @@ def test_fit_caltrack_hourly_model_nans_less_than_week_predict(
 @pytest.fixture
 def segmented_data_nans_less_than_week():
     num_periods = 4
-    index = pd.date_range(start="2017-01-01", periods=num_periods, freq="H", tz="UTC")
+    index = pd.date_range(start="2017-01-01", periods=num_periods, freq="h", tz="UTC")
     time_features = compute_time_features(index)
     segmented_data = pd.DataFrame(
         {
@@ -374,7 +368,7 @@ def segmented_design_matrices_nans_less_than_week(
 
 @pytest.fixture
 def temps_extended():
-    index = pd.date_range(start="2017-01-01", periods=168, freq="H", tz="UTC")
+    index = pd.date_range(start="2017-01-01", periods=168, freq="h", tz="UTC")
     temps = pd.Series(1, index=index)
     return temps
 

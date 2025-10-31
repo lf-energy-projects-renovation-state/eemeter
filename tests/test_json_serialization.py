@@ -1,36 +1,30 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""
 
-   Copyright 2014-2024 OpenEEmeter contributors
-
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
-
-       http://www.apache.org/licenses/LICENSE-2.0
-
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
-
-"""
+#  Copyright 2014-2025 OpenDSM contributors
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#      http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
 import json
 
-from eemeter.eemeter.samples import load_sample
-from eemeter.eemeter.common.transform import get_baseline_data, get_reporting_data
-from eemeter.eemeter import (
+from opendsm.eemeter.samples import load_sample
+from opendsm.eemeter.common.transform import get_baseline_data, get_reporting_data
+from opendsm.eemeter import (
     DailyBaselineData,
     DailyReportingData,
     DailyModel,
     BillingBaselineData,
     BillingReportingData,
     BillingModel,
-    HourlyModel,
-    HourlyBaselineData,
-    HourlyReportingData,
+    HourlyCaltrackModel,
+    HourlyCaltrackBaselineData,
+    HourlyCaltrackReportingData,
 )
 
 
@@ -120,7 +114,22 @@ def test_json_billing():
     assert total_metered_savings == total_metered_savings_loaded
 
 
-def test_json_hourly():
+def test_json_hourly_with_zeros():
+    meter_data, temperature_data, sample_metadata = load_sample(
+        "il-electricity-cdd-hdd-hourly"
+    )
+    meter_data["value"] = 0
+    baseline = HourlyCaltrackBaselineData.from_series(
+        meter_data, temperature_data, is_electricity_data=True
+    )
+    assert baseline.df["observed"].isnull().all()
+    reporting = HourlyCaltrackReportingData.from_series(
+        meter_data, temperature_data, is_electricity_data=True
+    )
+    assert reporting.df["observed"].isnull().all()
+
+
+def test_json_caltrack_hourly():
     meter_data, temperature_data, sample_metadata = load_sample(
         "il-electricity-cdd-hdd-hourly"
     )
@@ -132,18 +141,18 @@ def test_json_hourly():
     baseline_meter_data, warnings = get_baseline_data(
         meter_data, end=blackout_start_date, max_days=365
     )
-    baseline = HourlyBaselineData.from_series(
+    baseline = HourlyCaltrackBaselineData.from_series(
         baseline_meter_data, temperature_data, is_electricity_data=True
     )
 
     # build a CalTRACK hourly model
-    baseline_model = HourlyModel().fit(baseline)
+    baseline_model = HourlyCaltrackModel().fit(baseline)
 
     # get a year of reporting period data
     reporting_meter_data, warnings = get_reporting_data(
         meter_data, start=blackout_end_date, max_days=365
     )
-    reporting = HourlyReportingData.from_series(
+    reporting = HourlyCaltrackReportingData.from_series(
         reporting_meter_data, temperature_data, is_electricity_data=True
     )
 
@@ -151,11 +160,17 @@ def test_json_hourly():
 
     # serialize, deserialize
     json_str = baseline_model.to_json()
-    m = HourlyModel.from_json(json_str)
+    m = HourlyCaltrackModel.from_json(json_str)
 
     result2 = m.predict(reporting)
 
     assert result1["predicted"].sum() == result2["predicted"].sum()
+
+    # Check that model metrics are properly serialized/serialized
+    assert (
+        baseline_model.model.totals_metrics["dec-jan-feb-weighted"].observed_length
+        == m.model.totals_metrics["dec-jan-feb-weighted"].observed_length
+    )
 
 
 def test_legacy_deserialization_daily():
@@ -187,13 +202,13 @@ def test_legacy_deserialization_daily():
         metered_savings_dataframe["observed"] - metered_savings_dataframe["predicted"]
     ).sum()
 
-    assert round(total_metered_savings, 2) == -3772.7
+    assert round(total_metered_savings, 2) == 891.2
 
 
 def test_legacy_deserialization_hourly(request):
     with open(request.fspath.dirname + "/legacy_hourly.json", "r") as f:
         legacy_str = f.read()
-    baseline_model = HourlyModel.from_2_0_json(legacy_str)
+    baseline_model = HourlyCaltrackModel.from_2_0_json(legacy_str)
 
     meter_data, temperature_data, sample_metadata = load_sample(
         "il-electricity-cdd-hdd-hourly"
@@ -203,7 +218,7 @@ def test_legacy_deserialization_hourly(request):
     reporting_meter_data, warnings = get_reporting_data(
         meter_data, start=blackout_end_date, max_days=365
     )
-    reporting = HourlyReportingData.from_series(
+    reporting = HourlyCaltrackReportingData.from_series(
         reporting_meter_data, temperature_data, is_electricity_data=True
     )
 
@@ -212,4 +227,4 @@ def test_legacy_deserialization_hourly(request):
         metered_savings_dataframe["observed"] - metered_savings_dataframe["predicted"]
     ).sum()
 
-    assert round(total_metered_savings, 2) == -52893.66
+    assert round(total_metered_savings, 2) == -52454.02

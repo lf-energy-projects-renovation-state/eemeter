@@ -1,35 +1,29 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""
 
-   Copyright 2014-2024 OpenEEmeter contributors
-
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
-
-       http://www.apache.org/licenses/LICENSE-2.0
-
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
-
-"""
+#  Copyright 2014-2025 OpenDSM contributors
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#      http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
 import pytest
 
-from eemeter.eemeter.models.hourly.design_matrices import (
+from opendsm.eemeter.models.hourly_caltrack.design_matrices import (
     create_caltrack_hourly_preliminary_design_matrix,
     create_caltrack_hourly_segmented_design_matrices,
     create_caltrack_daily_design_matrix,
     create_caltrack_billing_design_matrix,
 )
-from eemeter.eemeter.common.features import (
+from opendsm.eemeter.common.features import (
     estimate_hour_of_week_occupancy,
     fit_temperature_bins,
 )
-from eemeter.eemeter.models.hourly.segmentation import segment_time_series
+from opendsm.eemeter.models.hourly_caltrack.segmentation import segment_time_series
 
 
 def test_create_caltrack_hourly_preliminary_design_matrix(
@@ -168,10 +162,10 @@ def test_create_caltrack_billing_design_matrix_empty_temp(
 ):
     meter_data = il_electricity_cdd_hdd_billing_monthly["meter_data"]
     temperature_data = il_electricity_cdd_hdd_billing_monthly["temperature_data"][:0]
-    design_matrix = create_caltrack_billing_design_matrix(
-        meter_data[:10], temperature_data
-    )
-    assert "n_days_kept" in design_matrix.columns
+    with pytest.raises(ValueError):
+        design_matrix = create_caltrack_billing_design_matrix(
+            meter_data[:10], temperature_data
+        )
 
 
 def test_create_caltrack_billing_design_matrix_partial_empty_temp(

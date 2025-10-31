@@ -1,29 +1,24 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""
 
-   Copyright 2014-2024 OpenEEmeter contributors
-
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
-
-       http://www.apache.org/licenses/LICENSE-2.0
-
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
-
-"""
-from eemeter.eemeter.models.billing.data import (
+#  Copyright 2014-2025 OpenDSM contributors
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#      http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+from opendsm.eemeter.models.billing.data import (
     BillingBaselineData,
     BillingReportingData,
 )
-from eemeter.eemeter.samples import load_sample
+from opendsm.eemeter.samples import load_sample
 import numpy as np
 import pandas as pd
+from pandas import Timestamp, DatetimeIndex, DataFrame
 import pytest
 
 TEMPERATURE_SEED = 29
@@ -55,7 +50,7 @@ def get_datetime_index_half_hourly_with_timezone():
         start="2023-01-01",
         end="2024-01-01",
         inclusive="left",
-        freq="30T",
+        freq="30min",
         tz="US/Eastern",
     )
 
@@ -69,7 +64,7 @@ def get_datetime_index_hourly_with_timezone():
         start="2023-01-01",
         end="2024-01-01",
         inclusive="left",
-        freq="H",
+        freq="h",
         tz="US/Eastern",
     )
 
@@ -194,7 +189,7 @@ def get_meter_data_monthly(get_datetime_index_monthly_with_timezone):
 
     # Create the DataFrame
     df = pd.DataFrame(data={"observed": meter_value}, index=datetime_index)
-    df["observed"][-1] = np.nan
+    df.iloc[-1, df.columns.get_loc("observed")] = np.nan
 
     return df
 
@@ -209,7 +204,7 @@ def get_meter_data_bimonthly(get_datetime_index_bimonthly_with_timezone):
 
     # Create the DataFrame
     df = pd.DataFrame(data={"observed": meter_value}, index=datetime_index)
-    df["observed"][-1] = np.nan
+    df.iloc[-1, df.columns.get_loc("observed")] = np.nan
 
     return df
 
@@ -283,10 +278,10 @@ def test_billing_baseline_data_with_monthly_frequencies(get_datetime_index):
     )
     # DQ because only 12 days worth of temperature data is available
     assert len(cls.disqualification) == 2
-    assert [dq.qualified_name for dq in cls.disqualification] == [
-        "eemeter.sufficiency_criteria.too_many_days_with_missing_data",
+    assert set([dq.qualified_name for dq in cls.disqualification]) == set([
         "eemeter.sufficiency_criteria.too_many_days_with_missing_temperature_data",
-    ]
+        "eemeter.sufficiency_criteria.too_many_days_with_missing_joint_data",
+    ])
 
 
 @pytest.mark.parametrize("get_datetime_index", [["2MS", True]], indirect=True)
@@ -306,7 +301,7 @@ def test_billing_baseline_data_with_bimonthly_frequencies(get_datetime_index):
         index=datetime_index,
     )
     df.index = df.index[:-1].union([df.index[-1] - pd.Timedelta(days=1)])
-    df["observed"][-1] = np.nan
+    df.iloc[-1, df.columns.get_loc("observed")] = np.nan
 
     cls = BillingBaselineData(df, is_electricity_data=True)
 
@@ -323,7 +318,7 @@ def test_billing_baseline_data_with_bimonthly_frequencies(get_datetime_index):
     assert len(cls.disqualification) == 2
     assert set([dq.qualified_name for dq in cls.disqualification]) == set(
         [
-            "eemeter.sufficiency_criteria.too_many_days_with_missing_data",
+            "eemeter.sufficiency_criteria.too_many_days_with_missing_joint_data",
             "eemeter.sufficiency_criteria.too_many_days_with_missing_temperature_data",
         ]
     )
@@ -535,18 +530,15 @@ def test_billing_baseline_data_with_specific_monthly_input():
     assert cls.df is not None
     assert len(cls.df) == (meter.index[-1] - meter.index[0]).days
     assert round(cls.df.observed.sum(), 2) == round(meter.value.sum(), 2)
-    assert len(cls.warnings) == 2
+    assert len(cls.warnings) == 1
     assert set([warning.qualified_name for warning in cls.warnings]) == set(
-        [
-            "eemeter.data_quality.utc_index",
-            "eemeter.sufficiency_criteria.extreme_values_detected",
-        ]
+        ["eemeter.data_quality.utc_index"]
     )
     assert len(cls.disqualification) == 0
 
 
 @pytest.mark.parametrize(
-    "get_datetime_index", [["30T", True], ["H", True]], indirect=True
+    "get_datetime_index", [["30min", True], ["h", True]], indirect=True
 )
 def test_billing_reporting_data_with_missing_half_hourly_frequencies(
     get_datetime_index,
@@ -573,9 +565,9 @@ def test_billing_reporting_data_with_missing_half_hourly_frequencies(
     assert cls.df is not None
     assert len(cls.df) == NUM_DAYS_IN_YEAR
 
-    if datetime_index.freq == "30T":
+    if datetime_index.freq == "30min":
         assert len(cls.df.temperature.dropna()) == 268
-    elif datetime_index.freq == "H":
+    elif datetime_index.freq == "h":
         assert len(cls.df.temperature.dropna()) == 270
 
     assert len(cls.warnings) == 1
@@ -586,7 +578,7 @@ def test_billing_reporting_data_with_missing_half_hourly_frequencies(
     assert len(cls.disqualification) == 3
     expected_disqualifications = [
         "eemeter.sufficiency_criteria.missing_monthly_temperature_data",
-        "eemeter.sufficiency_criteria.too_many_days_with_missing_data",
+        "eemeter.sufficiency_criteria.too_many_days_with_missing_joint_data",
         "eemeter.sufficiency_criteria.too_many_days_with_missing_temperature_data",
     ]
     assert all(
@@ -627,10 +619,40 @@ def test_billing_reporting_data_with_missing_daily_frequencies(get_datetime_inde
     assert len(cls.disqualification) == 3
     expected_disqualifications = [
         "eemeter.sufficiency_criteria.missing_monthly_temperature_data",
-        "eemeter.sufficiency_criteria.too_many_days_with_missing_data",
+        "eemeter.sufficiency_criteria.too_many_days_with_missing_joint_data",
         "eemeter.sufficiency_criteria.too_many_days_with_missing_temperature_data",
     ]
     assert all(
         disqualification.qualified_name in expected_disqualifications
         for disqualification in cls.disqualification
     )
+
+
+def test_dst_handling():
+    # 2020-03-08 02:00 is nonexistent, should push to 03:00
+    tz = "America/New_York"
+    idx = DatetimeIndex(
+        [
+            Timestamp("2020-03-07 02", tz=tz),
+            Timestamp("2020-04-06 02", tz=tz),
+            Timestamp("2020-05-06 02", tz=tz),
+        ]
+    )
+    df = DataFrame({"observed": [1] * 3, "temperature": [50] * 3}, index=idx)
+    baseline = BillingBaselineData(df, is_electricity_data=True)
+    assert len(baseline.df) == 61
+    hours = np.unique(baseline.df.index.hour)
+    assert (hours == [2, 3]).all()
+
+    # 2020-11-01 01:00 is ambiguous, single index should be chosen
+    tz = "America/New_York"
+    idx = DatetimeIndex(
+        [
+            Timestamp("2020-10-31 01", tz=tz),
+            Timestamp("2020-11-28 01", tz=tz),
+            Timestamp("2020-12-28 01", tz=tz),
+        ]
+    )
+    df = DataFrame({"observed": [1] * 3, "temperature": [50] * 3}, index=idx)
+    baseline = BillingBaselineData(df, is_electricity_data=True)
+    assert (baseline.df.index.hour == 1).all()

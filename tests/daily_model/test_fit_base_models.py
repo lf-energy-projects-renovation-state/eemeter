@@ -1,37 +1,31 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""
 
-   Copyright 2014-2024 OpenEEmeter contributors
-
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
-
-       http://www.apache.org/licenses/LICENSE-2.0
-
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
-
-"""
+#  Copyright 2014-2025 OpenDSM contributors
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#      http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
 import numpy as np
 import pandas as pd
 import pytest
-from eemeter.eemeter.models.daily.parameters import ModelCoefficients
+from opendsm.eemeter.models.daily.parameters import ModelCoefficients
 
-from eemeter.eemeter.models.daily.utilities.config import DailySettings as Settings
-from eemeter.eemeter.models.daily.parameters import ModelType
-from eemeter.eemeter.models.daily.fit_base_models import (
+from opendsm.eemeter.models.daily.utilities.settings import DailySettings as Settings
+from opendsm.eemeter.models.daily.parameters import ModelType
+from opendsm.eemeter.models.daily.fit_base_models import (
     fit_initial_models_from_full_model,
     fit_model,
     fit_final_model,
-    _get_opt_options,
+    _get_opt_settings,
 )
 
-from eemeter.eemeter.models.daily.optimize_results import OptimizedResult
+from opendsm.eemeter.models.daily.optimize_results import OptimizedResult
 
 
 @pytest.fixture
@@ -169,8 +163,9 @@ def test_fit_model(meter_data, get_settings):
     # Test case 1: Test for model_key = "hdd_tidd_cdd_smooth"
     T = np.array(meter_data["temperature"])
     obs = np.array(meter_data["observed"])
+    weights = None
 
-    fit_input = [T, obs, get_settings, _get_opt_options(get_settings)]
+    fit_input = [T, obs, weights, get_settings, _get_opt_settings(get_settings)]
     res = fit_model("hdd_tidd_cdd_smooth", fit_input, None, None)
     assert isinstance(res, OptimizedResult)
 

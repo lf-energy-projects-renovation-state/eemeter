@@ -1,30 +1,25 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""
 
-   Copyright 2014-2024 OpenEEmeter contributors
-
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
-
-       http://www.apache.org/licenses/LICENSE-2.0
-
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
-
-"""
+#  Copyright 2014-2025 OpenDSM contributors
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#      http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
 import gzip
-from pkg_resources import resource_filename, resource_stream
 from tempfile import TemporaryFile
+import importlib.resources
+import platform
 
 import pandas as pd
 import pytest
 
-from eemeter.eemeter.utilities.io import (
+from opendsm.eemeter.utilities.io import (
     meter_data_from_csv,
     meter_data_from_json,
     meter_data_to_csv,
@@ -38,7 +33,11 @@ def test_meter_data_from_csv(sample_metadata):
     meter_item = sample_metadata["il-electricity-cdd-hdd-daily"]
     meter_data_filename = meter_item["meter_data_filename"]
 
-    fname = resource_filename("eemeter.eemeter.samples", meter_data_filename)
+    fname = str(
+        importlib.resources.files("opendsm.eemeter.samples").joinpath(
+            meter_data_filename
+        )
+    )
     with gzip.open(fname) as f:
         meter_data = meter_data_from_csv(f)
     assert meter_data.shape == (810, 1)
@@ -50,7 +49,9 @@ def test_meter_data_from_csv_gzipped(sample_metadata):
     meter_item = sample_metadata["il-electricity-cdd-hdd-daily"]
     meter_data_filename = meter_item["meter_data_filename"]
 
-    with resource_stream("eemeter.eemeter.samples", meter_data_filename) as f:
+    with importlib.resources.files("opendsm.eemeter.samples").joinpath(
+        meter_data_filename
+    ).open("rb") as f:
         meter_data = meter_data_from_csv(f, gzipped=True)
     assert meter_data.shape == (810, 1)
     assert str(meter_data.index.tz) == "UTC"
@@ -61,7 +62,9 @@ def test_meter_data_from_csv_with_tz(sample_metadata):
     meter_item = sample_metadata["il-electricity-cdd-hdd-daily"]
     meter_data_filename = meter_item["meter_data_filename"]
 
-    with resource_stream("eemeter.eemeter.samples", meter_data_filename) as f:
+    with importlib.resources.files("opendsm.eemeter.samples").joinpath(
+        meter_data_filename
+    ).open("rb") as f:
         meter_data = meter_data_from_csv(f, gzipped=True, tz="US/Eastern")
     assert meter_data.shape == (810, 1)
     assert str(meter_data.index.tz) == "US/Eastern"
@@ -72,18 +75,22 @@ def test_meter_data_from_csv_hourly_freq(sample_metadata):
     meter_item = sample_metadata["il-electricity-cdd-hdd-daily"]
     meter_data_filename = meter_item["meter_data_filename"]
 
-    with resource_stream("eemeter.eemeter.samples", meter_data_filename) as f:
+    with importlib.resources.files("opendsm.eemeter.samples").joinpath(
+        meter_data_filename
+    ).open("rb") as f:
         meter_data = meter_data_from_csv(f, gzipped=True, freq="hourly")
     assert meter_data.shape == (19417, 1)
     assert str(meter_data.index.tz) == "UTC"
-    assert meter_data.index.freq == "H"
+    assert meter_data.index.freq == "h"
 
 
 def test_meter_data_from_csv_daily_freq(sample_metadata):
     meter_item = sample_metadata["il-electricity-cdd-hdd-daily"]
     meter_data_filename = meter_item["meter_data_filename"]
 
-    with resource_stream("eemeter.eemeter.samples", meter_data_filename) as f:
+    with importlib.resources.files("opendsm.eemeter.samples").joinpath(
+        meter_data_filename
+    ).open("rb") as f:
         meter_data = meter_data_from_csv(f, gzipped=True, freq="daily")
     assert meter_data.shape == (810, 1)
     assert str(meter_data.index.tz) == "UTC"
@@ -188,14 +195,21 @@ def test_meter_data_to_csv(sample_metadata):
     with TemporaryFile("w+") as f:
         meter_data_to_csv(df, f)
         f.seek(0)
-        assert f.read() == ("start,value\n" "2017-01-01 00:00:00+00:00,5\n")
+        if platform.system() == "Windows":
+            assert f.read() == ("start,value\n\n" "2017-01-01 00:00:00+00:00,5\n\n")
+        else:
+            assert f.read() == ("start,value\n" "2017-01-01 00:00:00+00:00,5\n")
 
 
 def test_temperature_data_from_csv(sample_metadata):
     meter_item = sample_metadata["il-electricity-cdd-hdd-daily"]
     temperature_filename = meter_item["temperature_filename"]
 
-    fname = resource_filename("eemeter.eemeter.samples", temperature_filename)
+    fname = str(
+        importlib.resources.files("opendsm.eemeter.samples").joinpath(
+            temperature_filename
+        )
+    )
     with gzip.open(fname) as f:
         temperature_data = temperature_data_from_csv(f)
     assert temperature_data.shape == (19417,)
@@ -207,7 +221,9 @@ def test_temperature_data_from_csv_gzipped(sample_metadata):
     meter_item = sample_metadata["il-electricity-cdd-hdd-daily"]
     temperature_filename = meter_item["temperature_filename"]
 
-    with resource_stream("eemeter.eemeter.samples", temperature_filename) as f:
+    with importlib.resources.files("opendsm.eemeter.samples").joinpath(
+        temperature_filename
+    ).open("rb") as f:
         temperature_data = temperature_data_from_csv(f, gzipped=True)
     assert temperature_data.shape == (19417,)
     assert str(temperature_data.index.tz) == "UTC"
@@ -218,7 +234,9 @@ def test_temperature_data_from_csv_with_tz(sample_metadata):
     meter_item = sample_metadata["il-electricity-cdd-hdd-daily"]
     temperature_filename = meter_item["temperature_filename"]
 
-    with resource_stream("eemeter.eemeter.samples", temperature_filename) as f:
+    with importlib.resources.files("opendsm.eemeter.samples").joinpath(
+        temperature_filename
+    ).open("rb") as f:
         temperature_data = temperature_data_from_csv(f, gzipped=True, tz="US/Eastern")
     assert temperature_data.shape == (19417,)
     assert str(temperature_data.index.tz) == "US/Eastern"
@@ -229,11 +247,13 @@ def test_temperature_data_from_csv_hourly_freq(sample_metadata):
     meter_item = sample_metadata["il-electricity-cdd-hdd-daily"]
     temperature_filename = meter_item["temperature_filename"]
 
-    with resource_stream("eemeter.eemeter.samples", temperature_filename) as f:
+    with importlib.resources.files("opendsm.eemeter.samples").joinpath(
+        temperature_filename
+    ).open("rb") as f:
         temperature_data = temperature_data_from_csv(f, gzipped=True, freq="hourly")
     assert temperature_data.shape == (19417,)
     assert str(temperature_data.index.tz) == "UTC"
-    assert temperature_data.index.freq == "H"
+    assert temperature_data.index.freq == "h"
 
 
 def test_temperature_data_from_csv_custom_columns(sample_metadata):
@@ -267,4 +287,7 @@ def test_temperature_data_to_csv(sample_metadata):
     with TemporaryFile("w+") as f:
         temperature_data_to_csv(series, f)
         f.seek(0)
-        assert f.read() == ("dt,temperature\n" "2017-01-01 00:00:00+00:00,10\n")
+        if platform.system() == "Windows":
+            assert f.read() == ("dt,temperature\n\n" "2017-01-01 00:00:00+00:00,10\n\n")
+        else:
+            assert f.read() == ("dt,temperature\n" "2017-01-01 00:00:00+00:00,10\n")

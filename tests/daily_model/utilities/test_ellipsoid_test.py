@@ -1,26 +1,20 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""
 
-   Copyright 2014-2024 OpenEEmeter contributors
-
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
-
-       http://www.apache.org/licenses/LICENSE-2.0
-
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
-
-"""
+#  Copyright 2014-2025 OpenDSM contributors
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#      http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
 import numpy as np
 import pandas as pd
 
-from eemeter.eemeter.models.daily.utilities.ellipsoid_test import (
+from opendsm.eemeter.models.daily.utilities.ellipsoid_test import (
     ellipsoid_intersection_test,
     ellipsoid_K_function,
     robust_confidence_ellipse,
@@ -72,29 +66,27 @@ def test_ellipsoid_K_function():
 
 
 def test_robust_confidence_ellipse():
+    # these answers should remain constant
+    def assert_close(mu, cov, a, b, phi):
+        assert np.allclose(mu, np.array([10.4, 18.1]), rtol=0.1)
+        assert np.allclose(cov, np.array([[27.2, -17], [-17, 28.4]]), rtol=0.1)
+        assert np.isclose(a, 3.3, rtol=0.1)
+        assert np.isclose(b, 6.7, rtol=0.1)
+        assert np.isclose(phi, -2.4, rtol=0.1)
+
     # test case 1: no outliers
-    x = np.array([1, 2, 3])
-    y = np.array([4, 5, 6])
+    # fmt: off
+    x = np.array([ 4.9,  5.2,  6.4,  6.8,  8.6,  8.6, 10.3, 10.4, 10.9, 11.4, 12.2, 12.9, 15.1, 15.3, 17.1])
+    y = np.array([24.5, 23.5, 13.8, 25.5, 13.6, 16.4, 15.4, 22.6,  8.9, 21.0, 13.6, 23.2, 21.7, 13.7, 14.1])
+    # fmt: on
     mu, cov, a, b, phi = robust_confidence_ellipse(x, y)
-    assert np.allclose(mu, np.array([2, 5]))
-    assert np.allclose(cov, np.array([[1.96, 0], [0, 0]]))
-    assert np.isclose(a, 1.4)
-    assert np.isclose(b, 0.0)
-    assert np.isclose(phi, 0.0)
+    assert_close(mu, cov, a, b, phi)
 
     # test case 2: with outliers
-    x = np.array([1, 2, 3, 100])
-    y = np.array([4, 5, 6, 200])
+    x = np.append(x, [8.7, 9.9, 10.5, 13, 13.4])
+    y = np.append(y, [34.7, 4.4, 35.3, 5.9, 28.6])
     mu, cov, a, b, phi = robust_confidence_ellipse(x, y)
-    assert np.allclose(mu, np.array([26.5, 5.5]))
-    assert np.allclose(
-        cov,
-        np.array([[4.70726667e03, 3.26666667e01], [3.26666667e01, 6.53333333e-01]]),
-        atol=1e-3,
-    )
-    assert np.isclose(a, 68.61117534074863)
-    assert np.isclose(b, 0.6531602874075392)
-    assert np.isclose(phi, 0.006940142826197432)
+    assert_close(mu, cov, a, b, phi)
 
 
 def test_ellipsoid_split_filter():

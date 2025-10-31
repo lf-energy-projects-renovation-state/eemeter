@@ -1,26 +1,21 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""
 
-   Copyright 2014-2024 OpenEEmeter contributors
-
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
-
-       http://www.apache.org/licenses/LICENSE-2.0
-
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
-
-"""
+#  Copyright 2014-2025 OpenDSM contributors
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#      http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
 import numpy as np
 import numba
+import pytest
 
-from eemeter.common.utils import (
+from opendsm.common.utils import (
     np_clip,
     OoM,
     RoundToSigFigs,
@@ -76,10 +71,12 @@ def test_np_clip():
 def test_OoM():
     # Test case 1: Test with a scalar input - should give an error as the declaration must have an array input
     x = 5000
-    try:
+    with pytest.raises(Exception) as e:
         OoM(x)
-    except numba.core.errors.TypingError as e:
-        assert str(e).startswith("Failed in nopython mode pipeline")
+    assert e.type in [
+        numba.core.errors.TypingError,
+        TypeError,
+    ]  # will depend whether using JIT
 
     # Test case 2: Test with an array input
     x = np.array([100, 1000, 10000, 100000])

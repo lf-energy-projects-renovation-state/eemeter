@@ -1,28 +1,22 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""
 
-   Copyright 2014-2024 OpenEEmeter contributors
-
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
-
-       http://www.apache.org/licenses/LICENSE-2.0
-
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
-
-"""
+#  Copyright 2014-2025 OpenDSM contributors
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#      http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
 import json
 import numpy as np
 import pandas as pd
 import pytest
 
-from eemeter.eemeter.models.hourly.segmentation import (
+from opendsm.eemeter.models.hourly_caltrack.segmentation import (
     CalTRACKSegmentModel,
     SegmentedModel,
     segment_time_series,
@@ -32,7 +26,7 @@ from eemeter.eemeter.models.hourly.segmentation import (
 
 @pytest.fixture
 def index_8760():
-    return pd.date_range("2017-01-01", periods=365 * 24, freq="H", tz="UTC")
+    return pd.date_range("2017-01-01", periods=365 * 24, freq="h", tz="UTC")
 
 
 def test_segment_time_series_invalid_type(index_8760):
@@ -118,7 +112,7 @@ def test_segment_time_series_drop_zero_weight_segments(index_8760):
 
 @pytest.fixture
 def dataset():
-    index = pd.date_range("2017-01-01", periods=1000, freq="H", tz="UTC")
+    index = pd.date_range("2017-01-01", periods=1000, freq="h", tz="UTC")
     return pd.DataFrame({"a": 1, "b": 2}, index=index, columns=["a", "b"])
 
 
@@ -199,7 +193,7 @@ def test_segment_model():
         model_params={"C(hour_of_week)[1]": 1, "a": 1},
         warnings=None,
     )
-    index = pd.date_range("2017-01-01", periods=2, freq="H", tz="UTC")
+    index = pd.date_range("2017-01-01", periods=2, freq="h", tz="UTC")
     data = pd.DataFrame({"a": [1, 1], "hour_of_week": [1, 1]}, index=index)
     prediction = segment_model.predict(data)
     assert prediction.sum() == 4
@@ -229,7 +223,7 @@ def test_segmented_model():
     )
 
     # make this cover jan and feb but only supply jan model
-    index = pd.date_range("2017-01-01", periods=24 * 50, freq="H", tz="UTC")
+    index = pd.date_range("2017-01-01", periods=24 * 50, freq="h", tz="UTC")
     temps = pd.Series(np.linspace(0, 100, 24 * 50), index=index)
     prediction = segmented_model.predict(temps.index, temps).result.predicted_usage
     assert prediction.sum() == 1488.0
