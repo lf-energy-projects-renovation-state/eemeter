@@ -18,7 +18,7 @@ from typing import Optional
 import numba
 import numpy as np
 
-from opendsm.common.adaptive_loss import adaptive_weights
+from opendsm.common.stats.adaptive_loss import adaptive_weights
 from opendsm.eemeter.models.daily.base_models.full_model import full_model
 from opendsm.eemeter.models.daily.base_models.hdd_tidd_cdd import full_model_weight
 from opendsm.eemeter.models.daily.objective_function import obj_fcn_decorator

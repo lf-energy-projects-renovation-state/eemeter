@@ -18,7 +18,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 
-from opendsm.common.adaptive_loss import IQR_outlier
+from opendsm.common.stats.outliers import IQR_outlier
 
 fontsize = 14
 mpl.rc("font", family="sans-serif")

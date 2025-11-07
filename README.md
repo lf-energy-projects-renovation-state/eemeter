@@ -166,5 +166,3 @@ This project is licensed under [Apache 2.0](LICENSE).
 - [MAINTAINERS](https://github.com/opendsm/opendsm/blob/master/MAINTAINERS.md): An ordered list of project maintainers.
 - [CHARTER](https://github.com/opendsm/opendsm/blob/master/CHARTER.md): Open source project charter.
 - [CODE OF CONDUCT](https://github.com/opendsm/opendsm/blob/master/CODE_OF_CONDUCT.md): Code of conduct for contributors.
-
-

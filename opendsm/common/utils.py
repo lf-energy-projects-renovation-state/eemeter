@@ -12,14 +12,13 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+
 import numba
 import numpy as np
 import pandas as pd
 from numba.extending import overload
-from scipy.stats import norm as norm_dist
-from scipy.stats import t as t_dist
 
-from pandas.api.types import is_datetime64_any_dtype as is_pd_datetime
+
 
 MIN_POS_SYSTEM_VALUE = (np.finfo(float).tiny * (1e20)) ** (1 / 2)
 MAX_POS_SYSTEM_VALUE = (np.finfo(float).max * (1e-20)) ** (1 / 2)
@@ -86,6 +85,33 @@ def np_clip(a, a_min, a_max):
         return _clip(a, a_min, a_max)
 
     return clip_impl
+
+
+def to_np_array(x):
+    """
+    This function converts the input value 'x' to a numpy array.
+
+    Parameters:
+    x [int, float, array]: The input value to be converted to a numpy array.
+
+    Returns:
+    numpy array: The converted numpy array.
+    """
+    if x is None:
+        return None
+
+    if not hasattr(x, "__len__"):
+        x = [x]
+
+    if not isinstance(x, np.ndarray):
+        x = np.array(x)
+
+    # if ndim is 0 then convert to 1D array
+    if x.ndim == 0:
+        x = np.array([x])
+
+    return np.array(x)
+
 
 def safe_divide(num, den, min_denominator=1e-3, return_all=True):
     """
@@ -219,131 +245,29 @@ def RoundToSigFigs(x, p):
     return np.round(x * mags) / mags
 
 
-def t_stat(alpha, n, tail=2):
-    """
-    Calculate the t-statistic for a given alpha level, sample size, and tail type.
+def sigmoid(x, x0=0, k=1):
+    # https://stackoverflow.com/questions/51976461/optimal-way-of-defining-a-numerically-stable-sigmoid-function-for-a-list-in-pyth
+    
+    def _positive_sigmoid(x):
+        return 1 / (1 + np.exp(-x))
 
-    Parameters:
-    alpha (float): The significance level.
-    n (int): The sample size.
-    tail (int or str): The type of tail test. Can be 1 or "one" for one-tailed test,
-                       and 2 or "two" for two-tailed test. Default is 2.
+    def _negative_sigmoid(x):
+        # Cache exp so you won't have to calculate it twice
+        exp = np.exp(x)
 
-    Returns:
-    float: The calculated t-statistic.
-    """
+        return exp / (exp + 1)
 
-    degrees_of_freedom = n - 1
-    if tail == "one" or tail == 1:
-        perc = 1 - alpha
-    elif tail == "two" or tail == 2:
-        perc = 1 - alpha / 2
+    x = (x - x0) / k
 
-    return t_dist.ppf(perc, degrees_of_freedom, 0, 1)
+    positive = x >= 0
+    # Boolean array inversion is faster than another comparison
+    negative = ~positive
 
+    # empty contains junk hence will be faster to allocate
+    # Zeros has to zero-out the array after allocation, no need for that
+    # See comment to the answer when it comes to dtype
+    res = np.empty_like(x, dtype=float)
+    res[positive] = _positive_sigmoid(x[positive])
+    res[negative] = _negative_sigmoid(x[negative])
 
-def unc_factor(n, interval="PI", alpha=0.10):
-    """
-    Calculates the uncertainty factor for a given sample size, confidence interval type, and significance level.
-
-    Parameters:
-    n (int): The sample size.
-    interval (str, optional): The type of confidence interval. Defaults to "PI" (Prediction Interval).
-    alpha (float, optional): The significance level. Defaults to 0.10.
-
-    Returns:
-    float: The uncertainty factor.
-    """
-
-    if interval == "CI":
-        return t_stat(alpha, n) / np.sqrt(n)
-
-    if interval == "PI":
-        return t_stat(alpha, n) * (1 + 1 / np.sqrt(n))
-
-
-# Conversion factor from MAD to std for normal distribution
-MAD_k = 1 / norm_dist.ppf(0.75)
-
-
-def median_absolute_deviation(x, median=None, axis=None):
-    """
-    This function calculates the Median Absolute Deviation (MAD) of a given array.
-
-    Parameters:
-    x (numpy array): The input array for which the MAD is to be calculated.
-    median (float, optional): The median value. If None, the median is calculated from the input array. Defaults to None.
-
-    Returns:
-    float: The calculated MAD of the input array.
-    """
-
-    mu = median
-    if mu is None:
-        mu = np.median(x, axis=axis)
-
-    sigma = np.median(np.abs(x - mu), axis=axis) * MAD_k
-
-    return sigma
-
-
-@numba.jit(nopython=True, cache=True)
-def weighted_std(x, w, mean=None, w_sum_err=1e-6):
-    """
-    Calculate the weighted standard deviation of a given array.
-
-    Parameters:
-    x (numpy.ndarray): The input array.
-    w (numpy.ndarray): The weights for the input array.
-    mean (float, optional): The mean value. If None, the mean is calculated from the input array. Defaults to None.
-    w_sum_err (float, optional): The error tolerance for the sum of weights. Defaults to 1e-6.
-
-    Returns:
-    float: The calculated weighted standard deviation.
-    """
-
-    n = float(len(x))
-
-    w_sum = np.sum(w)
-    if w_sum < 1 - w_sum_err or w_sum > 1 + w_sum_err:
-        w /= w_sum
-
-    if mean is None:
-        mean = np.sum(w * x)
-
-    var = np.sum(w * np.power((x - mean), 2)) / (1 - 1 / n)
-
-    return np.sqrt(var)
-
-
-def fast_std(x, weights=None, mean=None):
-    """
-    Function to calculate the approximate standard deviation quickly of a given array.
-    This function can handle both weighted and unweighted calculations.
-
-    Parameters:
-    x (numpy.ndarray): The input array for which the standard deviation is to be calculated.
-    weights (numpy.ndarray, optional): An array of weights for the input array. Defaults to None.
-    mean (float, optional): The mean of the input array. If not provided, it will be calculated. Defaults to None.
-
-    Returns:
-    float: The calculated standard deviation.
-    """
-
-    if isinstance(weights, int) or isinstance(weights, float):
-        weights = np.array([weights])
-
-    if weights is None or len(weights) == 1 or np.allclose(weights - weights[0], 0):
-        if mean is None:
-            return np.std(x)
-
-        else:
-            n = float(len(x))
-            var = np.sum(np.power((x - mean), 2)) / n
-            return np.sqrt(var)
-
-    else:
-        if mean is None:
-            mean = np.average(x, weights=weights)
-
-        return weighted_std(x, weights, mean)
+    return res

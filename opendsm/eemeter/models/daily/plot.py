@@ -19,7 +19,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 
-from opendsm.common.adaptive_loss import IQR_outlier
+from opendsm.common.stats.outliers import IQR_outlier
 from opendsm.eemeter.models.daily.utilities.ellipsoid_test import (
     robust_confidence_ellipse,
 )

@@ -15,15 +15,19 @@
 from __future__ import annotations
 
 from pathlib import Path
+from io import BytesIO
 
 import pandas as pd
+import pyarrow.parquet as pq
+
 import requests
 
+from opendsm import __file__ as opendsm_file_path
 from opendsm.common.const import TutorialDataChoice
 
 # Define the current directory
-current_dir = Path(__file__).resolve().parent
-data_dir = current_dir.parents[1] / "data"
+current_dir = Path(opendsm_file_path).resolve().parent
+data_dir = current_dir.parent / "data"
 
 # Set download information
 repo_full_name = "opendsm/opendsm"
@@ -152,16 +156,43 @@ def _load_other_data(data_type):
 
 def _load_file(file: Path | str):
     if isinstance(file, str):
-        file = Path(file)
+        file = data_dir / file
 
+    file_type = None
+    if file.suffix == ".csv":
+        file_type = "csv"
+    elif file.suffix == ".parquet":
+        file_type = "parquet"
+    
     url = f"https://raw.githubusercontent.com/{repo_full_name}/{branch}/{path}/{file.name}"
 
-    try:
-        if file.suffix == ".csv":
-            df = pd.read_csv(url)
+    if file.exists():
+        data = file
 
-        elif file.suffix == ".parquet":
-            df = pd.read_parquet(url)
+    else:
+        response = requests.get(url)
+        response.raise_for_status()
+        try:
+            with open(file, "wb") as f:
+                f.write(response.content)
+
+            data = file
+            raise Exception("I dunno")
+
+        except:
+            data = BytesIO(response.content)
+            print(f"Warning: Could not write file {file}. Ensure the directory exists and you have write permissions.")
+
+    try:
+        if file_type == "csv":
+            df = pd.read_csv(data)
+
+        elif file_type == "parquet":
+            df = pd.read_parquet(data, engine="pyarrow")
+
+            # Read the Parquet file into a PyArrow Table
+            # table = pq.read_table(file)
+            # df = table.to_pandas()
 
     except Exception as e:
         print(f"Error loading file {file}: {e}")

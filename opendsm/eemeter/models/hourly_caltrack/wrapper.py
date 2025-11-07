@@ -17,7 +17,7 @@ import json
 import numpy as np
 import pandas as pd
 
-from opendsm.common.utils import t_stat
+from opendsm.common.stats.basic import t_stat
 from opendsm.eemeter.common.features import (
     estimate_hour_of_week_occupancy,
     fit_temperature_bins,
