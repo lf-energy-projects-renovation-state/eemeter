@@ -27,7 +27,7 @@ dependencies = [
   "nlopt",
   "numba",
   "numpy>=1.24.4",
-  "pandas>=1.1.0,<=2.2.3", # cap at 2.2.3 to avoid test issues with reading in parquet files
+  "pandas>=2.3.3,<=2.3.3", # cap at 2.2.3 to avoid test issues with reading in parquet files
   "pyarrow", # why?
   "pydantic>=2.0",
   "pywavelets",
