@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.7
+# syntax=docker/dockerfile:1.20
 FROM python:3.10-slim AS app
 
 # System deps (you had libenchant-2-dev)
