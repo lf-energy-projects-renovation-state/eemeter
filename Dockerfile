@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-FROM python:3.10-slim AS app
+FROM python:3.14-slim AS app
 
 # System deps for building native wheels
 RUN apt-get update && apt-get install -y --no-install-recommends \
